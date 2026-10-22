@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="20dp"
+        android:paddingTop="16dp"
+        android:paddingRight="20dp"
+        android:paddingBottom="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            style="@style/Hint"
+            android:layout_marginTop="4dp"
+            android:text="スマホで再生中の動画（YouTube・Udemyなど）の音声を聞き取り、日本語字幕を画面に重ねて表示します。" />
+
+        <!-- 音声の取得元 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:text="音声の取得元" />
+
+        <RadioGroup
+            android:id="@+id/inputGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/radioPlayback"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="スマホで再生中の音声（おすすめ）" />
+
+            <RadioButton
+                android:id="@+id/radioMic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="マイク（再生音を取得できないアプリ・他の機器用）" />
+        </RadioGroup>
+
+        <!-- 言語 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:text="動画で話されている言語" />
+
+        <Spinner
+            android:id="@+id/languageSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+        <TextView
+            android:id="@+id/languageInfo"
+            style="@style/Hint"
+            android:layout_marginTop="4dp"
+            android:lineSpacingMultiplier="1.2" />
+
+        <!-- 音声認識 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:text="音声認識" />
+
+        <RadioGroup
+            android:id="@+id/asrGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/radioVosk"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="端末内・軽量（無料・速い・話している途中も表示）" />
+
+            <RadioButton
+                android:id="@+id/radioSherpa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="端末内・多言語（無料・より正確・タイ語などにも対応）" />
+
+            <RadioButton
+                android:id="@+id/radioAsrOpenAi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="OpenAI（高精度・APIキーが必要・従量課金）" />
+        </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/whisperSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Hint"
+                android:layout_marginTop="8dp"
+                android:text="多言語モデル（Whisper）の大きさ" />
+
+            <Spinner
+                android:id="@+id/whisperSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/asrInfo"
+            style="@style/Hint"
+            android:layout_marginTop="4dp" />
+
+        <!-- 翻訳 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:text="日本語への翻訳" />
+
+        <RadioGroup
+            android:id="@+id/translateGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/radioMlKit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="端末内（無料・Google ML Kit）" />
+
+            <RadioButton
+                android:id="@+id/radioTrOpenAi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="OpenAI（より自然な日本語・APIキーが必要）" />
+        </RadioGroup>
+
+        <!-- OpenAI 設定 -->
+        <LinearLayout
+            android:id="@+id/openAiSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:text="OpenAI の設定" />
+
+            <EditText
+                android:id="@+id/apiKeyEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="APIキー（sk-…）"
+                android:importantForAutofill="no"
+                android:inputType="textPassword"
+                android:singleLine="true" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_marginTop="8dp"
+                android:text="使用モデル（通常は変更不要）" />
+
+            <EditText
+                android:id="@+id/sttModelEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="音声認識モデル"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <EditText
+                android:id="@+id/chatModelEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="翻訳モデル"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <TextView
+                style="@style/Hint"
+                android:text="APIキーはこの端末内にのみ保存されます。OpenAI を選んだ場合、音声または文字起こしが OpenAI に送信されます。" />
+        </LinearLayout>
+
+        <!-- 表示 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:text="字幕の表示" />
+
+        <TextView
+            android:id="@+id/fontSizeLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="文字サイズ" />
+
+        <SeekBar
+            android:id="@+id/fontSizeSeek"
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
+
+        <Switch
+            android:id="@+id/showOriginalSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="原文（英語など）も小さく表示する" />
+
+        <Switch
+            android:id="@+id/touchThroughSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="字幕の上からでも動画を操作できるようにする（オンの間は字幕をドラッグで移動できません）" />
+
+        <TextView
+            style="@style/Hint"
+            android:text="文字サイズ・原文表示・タッチ設定は字幕の表示中でもすぐ反映されます。それ以外の設定は次に開始したときから有効です。" />
+
+        <!-- 開始 -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:max="100"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/startButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="8dp"
+            android:text="字幕を開始"
+            android:textSize="17sp" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="使い方のヒント" />
+
+        <TextView
+            style="@style/Hint"
+            android:lineSpacingMultiplier="1.3"
+            android:text="・「字幕を開始」→ 表示される確認画面で「開始」を選ぶと、字幕の待機状態になります。画面の映像は記録せず、音声だけを使います。\n・そのまま YouTube や Udemy を開いて動画を再生してください。\n・字幕は指でドラッグして好きな位置に動かせます。\n・止めるときは通知の「停止」か、このアプリの「字幕を停止」を押します。\n・字幕が出ない場合は、そのアプリが再生音の取得を禁止している可能性があります。音声の取得元を「マイク」にするか、Chrome などのブラウザで再生してみてください。" />
+    </LinearLayout>
+</ScrollView>

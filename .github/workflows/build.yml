@@ -1,0 +1,65 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # プロジェクトを ZIP のままアップロードした場合は展開して使う
+      - name: Find project
+        run: |
+          if [ -f settings.gradle.kts ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          else
+            zip_file=$(ls *.zip | head -n 1)
+            unzip -q "$zip_file" -d unpacked
+            dir=$(dirname "$(find unpacked -name settings.gradle.kts | head -n 1)")
+            echo "PROJECT_DIR=$dir" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: AutoJimaku-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/*.apk
+
+      # APK とビルドログを apk-output ブランチに置く (成功・失敗どちらでも)
+      - name: Publish to apk-output branch
+        if: always()
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          out="$RUNNER_TEMP/out"
+          mkdir -p "$out"
+          cp "$RUNNER_TEMP/build.log" "$out/" 2>/dev/null || echo "no log" > "$out/build.log"
+          cp "$PROJECT_DIR"/app/build/outputs/apk/release/*.apk "$out/AutoJimaku.apk" 2>/dev/null || true
+          echo "${{ job.status }} ${GITHUB_SHA}" > "$out/STATUS"
+          cd "$out"
+          git init -q
+          git checkout -q -b apk-output
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Build output for ${GITHUB_SHA::7} (${{ job.status }})"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk-output

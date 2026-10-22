@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">自動日本語字幕</string>
+    <string name="channel_name">字幕の表示</string>
+    <string name="notification_title">日本語字幕を表示中</string>
+    <string name="notification_text">タップで設定を開く・「停止」で終了</string>
+    <string name="action_stop">停止</string>
+</resources>
