@@ -92,8 +92,12 @@ class MainActivity : Activity() {
         settings.consumeLastError()?.let { setStatus(it) }
         if (resumeAfterOverlayPermission) {
             resumeAfterOverlayPermission = false
-            if (Settings.canDrawOverlays(this)) proceed()
-            else setStatus("「他のアプリの上に重ねて表示」が許可されていません")
+            if (Settings.canDrawOverlays(this)) {
+                proceed()
+            } else {
+                setStatus("「他のアプリの上に重ねて表示」が許可されていません")
+                showRestrictedSettingsHelp()
+            }
         }
     }
 
@@ -376,17 +380,46 @@ class MainActivity : Activity() {
             .setTitle("重ねて表示の許可")
             .setMessage(
                 "字幕を YouTube や Udemy の上に表示するために必要です。\n\n" +
-                    "次の画面で「${getString(R.string.app_name)}」をオンにしてから、この画面に戻ってください。",
+                    "次の画面で「${getString(R.string.app_name)}」をオンにしてから、この画面に戻ってください。\n\n" +
+                    "スイッチがグレーで押せないときは、一度タップしてからこの画面に戻ってください。解除の手順をご案内します。",
             )
-            .setPositiveButton("設定を開く") { _, _ ->
-                resumeAfterOverlayPermission = true
+            .setPositiveButton("設定を開く") { _, _ -> openOverlaySettings() }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
+    private fun openOverlaySettings() {
+        resumeAfterOverlayPermission = true
+        try {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        } catch (_: ActivityNotFoundException) {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+        }
+    }
+
+    /**
+     * Android 15 以降、Google Play 以外から入れたアプリは「重ねて表示」が「制限付き設定」でロックされる。
+     * アプリ情報の︙メニューから「制限付き設定を許可」すると解除できるので、その手順を案内する。
+     */
+    private fun showRestrictedSettingsHelp() {
+        AlertDialog.Builder(this)
+            .setTitle("スイッチがグレーで押せない場合")
+            .setMessage(
+                "Google Play 以外から入れたアプリは、Android の「制限付き設定」で許可がロックされています。次の手順で解除できます。\n\n" +
+                    "1. 下の「アプリ情報を開く」を押す\n" +
+                    "2. 右上の︙（その他）→「制限付き設定を許可」を押し、画面ロックで確認\n" +
+                    "3. このアプリに戻り、もう一度「字幕を開始」を押してスイッチをオンにする\n\n" +
+                    "︙に項目が無いときは、先に許可の画面でグレーのスイッチを一度タップしてから、もう一度見てください。",
+            )
+            .setPositiveButton("アプリ情報を開く") { _, _ ->
                 try {
-                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
                 } catch (_: ActivityNotFoundException) {
-                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
                 }
             }
-            .setNegativeButton("キャンセル", null)
+            .setNeutralButton("許可の画面を開く") { _, _ -> openOverlaySettings() }
+            .setNegativeButton("閉じる", null)
             .show()
     }
 
