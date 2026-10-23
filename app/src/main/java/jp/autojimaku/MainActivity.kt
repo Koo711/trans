@@ -57,6 +57,8 @@ class MainActivity : Activity() {
     private lateinit var chatModelEdit: EditText
     private lateinit var fontSizeLabel: TextView
     private lateinit var fontSizeSeek: SeekBar
+    private lateinit var visibleLinesLabel: TextView
+    private lateinit var visibleLinesSeek: SeekBar
     private lateinit var showOriginalSwitch: Switch
     private lateinit var touchThroughSwitch: Switch
     private lateinit var progressBar: ProgressBar
@@ -125,6 +127,8 @@ class MainActivity : Activity() {
         chatModelEdit = requireViewById(R.id.chatModelEdit)
         fontSizeLabel = requireViewById(R.id.fontSizeLabel)
         fontSizeSeek = requireViewById(R.id.fontSizeSeek)
+        visibleLinesLabel = requireViewById(R.id.visibleLinesLabel)
+        visibleLinesSeek = requireViewById(R.id.visibleLinesSeek)
         showOriginalSwitch = requireViewById(R.id.showOriginalSwitch)
         touchThroughSwitch = requireViewById(R.id.touchThroughSwitch)
         progressBar = requireViewById(R.id.progressBar)
@@ -154,6 +158,10 @@ class MainActivity : Activity() {
         fontSizeSeek.max = AppSettings.MAX_FONT_SIZE - AppSettings.MIN_FONT_SIZE
         fontSizeSeek.progress = settings.fontSizeSp - AppSettings.MIN_FONT_SIZE
         fontSizeLabel.text = "文字サイズ: ${settings.fontSizeSp}"
+
+        visibleLinesSeek.max = AppSettings.MAX_VISIBLE_LINES - AppSettings.MIN_VISIBLE_LINES
+        visibleLinesSeek.progress = settings.visibleLines - AppSettings.MIN_VISIBLE_LINES
+        visibleLinesLabel.text = visibleLinesText(settings.visibleLines)
 
         showOriginalSwitch.isChecked = settings.showOriginal
         touchThroughSwitch.isChecked = settings.touchThrough
@@ -213,6 +221,16 @@ class MainActivity : Activity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+        visibleLinesSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val lines = AppSettings.MIN_VISIBLE_LINES + progress
+                visibleLinesLabel.text = visibleLinesText(lines)
+                if (fromUser) settings.visibleLines = lines
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
         showOriginalSwitch.setOnCheckedChangeListener { _, checked -> settings.showOriginal = checked }
         touchThroughSwitch.setOnCheckedChangeListener { _, checked -> settings.touchThrough = checked }
 
@@ -225,6 +243,8 @@ class MainActivity : Activity() {
             }
         }
     }
+
+    private fun visibleLinesText(lines: Int) = "字幕の箱の高さ: ${lines}行ぶん（それより前の字幕は箱を上下にスワイプして見られます）"
 
     private fun afterChanged(onChange: (String) -> Unit) = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}

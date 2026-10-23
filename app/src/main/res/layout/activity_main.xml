@@ -204,6 +204,17 @@
             android:layout_width="match_parent"
             android:layout_height="40dp" />
 
+        <TextView
+            android:id="@+id/visibleLinesLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="字幕の箱の高さ" />
+
+        <SeekBar
+            android:id="@+id/visibleLinesSeek"
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
+
         <Switch
             android:id="@+id/showOriginalSwitch"
             android:layout_width="match_parent"
@@ -216,11 +227,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
-            android:text="字幕の上からでも動画を操作できるようにする（オンの間は字幕をドラッグで移動できません）" />
+            android:text="字幕の上からでも動画を操作できるようにする（オンの間は字幕の移動・履歴のスクロールはできません）" />
 
         <TextView
             style="@style/Hint"
-            android:text="文字サイズ・原文表示・タッチ設定は字幕の表示中でもすぐ反映されます。それ以外の設定は次に開始したときから有効です。" />
+            android:text="文字サイズ・箱の高さ・原文表示・タッチ設定は字幕の表示中でもすぐ反映されます。それ以外の設定は次に開始したときから有効です。" />
 
         <!-- 開始 -->
         <ProgressBar
@@ -254,6 +265,6 @@
         <TextView
             style="@style/Hint"
             android:lineSpacingMultiplier="1.3"
-            android:text="・「字幕を開始」→ 表示される確認画面で「開始」を選ぶと、字幕の待機状態になります。画面の映像は記録せず、音声だけを使います。\n・そのまま YouTube や Udemy を開いて動画を再生してください。\n・字幕は指でドラッグして好きな位置に動かせます。\n・止めるときは通知の「停止」か、このアプリの「字幕を停止」を押します。\n・字幕が出ない場合は、そのアプリが再生音の取得を禁止している可能性があります。音声の取得元を「マイク」にするか、Chrome などのブラウザで再生してみてください。" />
+            android:text="・「字幕を開始」→ 表示される確認画面で「開始」を選ぶと、字幕の待機状態になります。画面の映像は記録せず、音声だけを使います。\n・そのまま YouTube や Udemy を開いて動画を再生してください。\n・字幕の箱の上にある「つまみ（横線）」をドラッグすると好きな位置に動かせます。字幕は常に画面内に収まります。\n・字幕の箱を上下にスワイプすると、前の字幕（翻訳の履歴）を見られます。「▼ 最新」で最新に戻ります。\n・しばらく字幕が出ないと、箱は小さなつまみだけになります。つまみをタップすると履歴を開けます。\n・止めるときは通知の「停止」か、このアプリの「字幕を停止」を押します。\n・字幕が出ない場合は、そのアプリが再生音の取得を禁止している可能性があります。音声の取得元を「マイク」にするか、Chrome などのブラウザで再生してみてください。" />
     </LinearLayout>
 </ScrollView>

@@ -65,14 +65,20 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_TOUCH_THROUGH, false)
         set(v) = prefs.edit().putBoolean(KEY_TOUCH_THROUGH, v).apply()
 
-    /** 字幕の位置 (画面下中央からのずれ, px)。y < 0 は未設定 */
-    var overlayX: Int
-        get() = prefs.getInt(KEY_OVERLAY_X, 0)
-        set(v) = prefs.edit().putInt(KEY_OVERLAY_X, v).apply()
+    /** 字幕の位置: 箱の中心の横位置 (画面幅に対する割合) */
+    var overlayCenterX: Float
+        get() = prefs.getFloat(KEY_OVERLAY_CX, 0.5f).coerceIn(0f, 1f)
+        set(v) = prefs.edit().putFloat(KEY_OVERLAY_CX, v).apply()
 
-    var overlayY: Int
-        get() = prefs.getInt(KEY_OVERLAY_Y, -1)
-        set(v) = prefs.edit().putInt(KEY_OVERLAY_Y, v).apply()
+    /** 字幕の位置: 画面下端から箱の下端まで (画面の高さに対する割合) */
+    var overlayBottom: Float
+        get() = prefs.getFloat(KEY_OVERLAY_BOTTOM, 0.12f).coerceIn(0f, 1f)
+        set(v) = prefs.edit().putFloat(KEY_OVERLAY_BOTTOM, v).apply()
+
+    /** 字幕の箱に一度に表示する行数 (それより前はスクロールで見る) */
+    var visibleLines: Int
+        get() = prefs.getInt(KEY_VISIBLE_LINES, DEFAULT_VISIBLE_LINES).coerceIn(MIN_VISIBLE_LINES, MAX_VISIBLE_LINES)
+        set(v) = prefs.edit().putInt(KEY_VISIBLE_LINES, v).apply()
 
     /** サービスで起きたエラーを画面に伝えるためのメッセージ */
     fun setLastError(message: String) = putString(KEY_LAST_ERROR, message)
@@ -104,8 +110,9 @@ class AppSettings(context: Context) {
         const val KEY_FONT_SIZE = "font_size"
         const val KEY_SHOW_ORIGINAL = "show_original"
         const val KEY_TOUCH_THROUGH = "touch_through"
-        const val KEY_OVERLAY_X = "overlay_x"
-        const val KEY_OVERLAY_Y = "overlay_y"
+        const val KEY_OVERLAY_CX = "overlay_center_x"
+        const val KEY_OVERLAY_BOTTOM = "overlay_bottom"
+        const val KEY_VISIBLE_LINES = "visible_lines"
         const val KEY_LAST_ERROR = "last_error"
 
         const val DEFAULT_STT_MODEL = "gpt-4o-mini-transcribe"
@@ -114,5 +121,9 @@ class AppSettings(context: Context) {
         const val MIN_FONT_SIZE = 14
         const val MAX_FONT_SIZE = 36
         const val DEFAULT_FONT_SIZE = 20
+
+        const val MIN_VISIBLE_LINES = 2
+        const val MAX_VISIBLE_LINES = 8
+        const val DEFAULT_VISIBLE_LINES = 3
     }
 }

@@ -14,8 +14,8 @@ android {
         // 他アプリの再生音声の取得 (AudioPlaybackCapture) は Android 10 以降
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "2.1"
+        versionCode = 4
+        versionName = "2.2"
 
         ndk {
             // スマホ向け。エミュレーター (PC) で試す場合は "x86_64" を追加する
