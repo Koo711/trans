@@ -6,7 +6,7 @@ Android スマホで再生中の動画（YouTube・Udemy など）の音声を�
 - 全画面・横向きの動画の上にも表示されます。字幕は常に画面内に収まり、つまみをドラッグして移動できます
 - 翻訳した字幕は履歴として残り、字幕の箱を上下にスワイプすると前の字幕まで見返せます
 - **無料・オフライン**（端末内の音声認識＋Google ML Kit 翻訳）で動きます
-- 翻訳は **Google Gemini**（無料枠あり・APIキーが必要）や **OpenAI**（有料）にも切り替えられ、より自然な日本語になります
+- 翻訳はオンラインの **Google翻訳**（月50万文字まで無料）、**Google Gemini**（無料枠あり）、**OpenAI**（有料）にも切り替えられます（どれも APIキーが必要）
 - **82言語＋自動判別**に対応（タイ語・ベトナム語・インドネシア語・中国語・韓国語・英語など）。タイ語とベトナム語は専用の高精度モデルを使います
 - 日本語の動画を日本語字幕にする（文字起こしのみ）こともできます
 - 対応: Android 10 以降
@@ -17,7 +17,7 @@ Android スマホで再生中の動画（YouTube・Udemy など）の音声を�
 動画アプリの再生音 ──(Android の再生音キャプチャ)──▶ 音声認識 ──▶ 日本語に翻訳 ──▶ 画面に重ねて表示
                                                     │                     │
                                    端末内・軽量(Vosk)             端末内(ML Kit)
-                                   端末内・多言語(Whisper/        or Gemini or OpenAI
+                                   端末内・多言語(Whisper/        or Google翻訳 / Gemini / OpenAI
                                      タイ語・ベトナム語専用)
                                    or OpenAI
 ```
@@ -172,9 +172,22 @@ jobs:
 
 | 翻訳 | 料金 | 特徴 |
 |---|---|---|
-| **端末内**（Google ML Kit） | 無料・オフライン | 速い。59言語。話している途中の暫定訳も出る |
+| **端末内**（Google ML Kit） | 無料・オフライン | Google翻訳アプリのオフライン翻訳と同じ仕組み。速い。59言語。話している途中の暫定訳も出る |
+| **Google翻訳（オンライン）** | 月50万文字まで無料（超えると100万文字あたり20ドル） | ウェブ版の Google翻訳と同じく、端末内より高精度。全言語に対応。速い |
 | **Gemini** | 無料枠あり（超えると従量課金） | 文脈を踏まえた自然な日本語。全言語に対応 |
 | **OpenAI** | 従量課金 | 文脈を踏まえた自然な日本語。全言語に対応 |
+
+#### Google翻訳（オンライン）を使うには
+
+字幕1文はおよそ50〜100文字なので、無料枠（月50万文字）で月5,000〜10,000文ほど翻訳できます。
+
+1. [Google Cloud コンソール](https://console.cloud.google.com/) に Google アカウントでログインし、プロジェクトを作る（初めての場合）
+2. [Cloud Translation API のページ](https://console.cloud.google.com/apis/library/translate.googleapis.com) で「有効にする」を押す（請求先アカウント＝クレジットカードの登録を求められます。無料枠内なら料金はかかりません）
+3. 「APIとサービス」→「認証情報」→「認証情報を作成」→「APIキー」でキーを作る。作ったキーの設定で「APIの制限」を「Cloud Translation API」だけにしておくと安全です
+4. アプリの翻訳で「Google翻訳」を選び、表示される欄に APIキー（`AIza…` で始まる文字列）を貼り付けて「字幕を開始」
+
+- 使いすぎが心配な場合は、Google Cloud の「お支払い」→「予算とアラート」で予算の通知を設定できます
+- 上限に達したときや通信が切れたときは、自動で端末内翻訳に切り替え、1分ほどしたら Google翻訳に戻ります
 
 #### Gemini を使うには
 
@@ -188,14 +201,14 @@ jobs:
 
 #### 端末内翻訳に未対応の言語
 
-次の言語は端末内翻訳に未対応のため、翻訳を「Gemini」か「OpenAI」にしてください: アゼルバイジャン語・アムハラ語・アルメニア語・ウズベク語・カザフ語・キルギス語・クメール語・シンハラ語・セルビア語・ソマリ語・タジク語・ネパール語・ハウサ語・パシュトー語・バスク語・パンジャブ語・ボスニア語・マラヤーラム語・ミャンマー語・モンゴル語・ヨルバ語・ラオ語・ラテン語
+次の言語は端末内翻訳に未対応のため、翻訳を「Google翻訳」「Gemini」「OpenAI」のどれかにしてください: アゼルバイジャン語・アムハラ語・アルメニア語・ウズベク語・カザフ語・キルギス語・クメール語・シンハラ語・セルビア語・ソマリ語・タジク語・ネパール語・ハウサ語・パシュトー語・バスク語・パンジャブ語・ボスニア語・マラヤーラム語・ミャンマー語・モンゴル語・ヨルバ語・ラオ語・ラテン語
 
 #### OpenAI を使うには
 
 - [OpenAI の API キー](https://platform.openai.com/api-keys) が必要です（ChatGPT の有料プランとは別契約・従量課金）。料金は [OpenAI の料金ページ](https://openai.com/api/pricing/) を確認してください
 - 初期のモデル: 音声認識 `gpt-4o-mini-transcribe` / 翻訳 `gpt-5-mini`（アプリ内で変更可）
 
-APIキーは端末内にだけ保存されます。Gemini・OpenAI を選んだ場合のみ、文字起こし（OpenAI の音声認識を選んだ場合は音声）がそのサービスに送信されます。
+APIキーは端末内にだけ保存されます。Google翻訳・Gemini・OpenAI を選んだ場合のみ、文字起こし（OpenAI の音声認識を選んだ場合は音声）がそのサービスに送信されます。
 
 ---
 
@@ -240,7 +253,7 @@ Android 15 以降は、Google Play 以外から入れたアプリの一部の許
   - 端末内・軽量: [Vosk](https://alphacephei.com/vosk/)
   - 端末内・多言語: [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8（Silero VAD で発話区間を切り出し、Whisper int8 またはタイ語 Zipformer（GigaSpeech2）・ベトナム語 Zipformer で認識）。AAR はビルド時に GitHub のリリースから取得します
   - OpenAI: `audio/transcriptions`（簡易 VAD で区間ごとに送信）
-- 翻訳: [Google ML Kit Translation](https://developers.google.com/ml-kit/language/translation) ＋ [Language ID](https://developers.google.com/ml-kit/language/identification)（端末内）、Gemini API `generateContent`（利用上限・通信エラー時は端末内翻訳に自動切り替え）、OpenAI `chat/completions`（クラウドはどちらも直前2文を文脈として渡す）
+- 翻訳: [Google ML Kit Translation](https://developers.google.com/ml-kit/language/translation) ＋ [Language ID](https://developers.google.com/ml-kit/language/identification)（端末内）、Google Cloud Translation API Basic v2・Gemini API `generateContent`（どちらも利用上限・通信エラー時は端末内翻訳に自動切り替え）、OpenAI `chat/completions`（クラウドはどちらも直前2文を文脈として渡す）
 - モデルの入手元: Whisper・ベトナム語は Hugging Face（csukuangfj）、タイ語は Hugging Face（yfyeung/icefall-asr-gigaspeech2-th-zipformer）、Silero VAD は sherpa-onnx の GitHub リリース
 - 表示: `TYPE_APPLICATION_OVERLAY` のオーバーレイウィンドウ
 
@@ -253,8 +266,8 @@ Android 15 以降は、Google Play 以外から入れたアプリの一部の許
 | `speech/VoskEngine.kt` | 端末内・軽量の音声認識 |
 | `speech/SherpaEngine.kt` | 端末内・多言語の音声認識（VAD・Whisper・専用モデル・言語判別） |
 | `speech/OpenAiSpeechEngine.kt` | OpenAI の音声認識（発話区間の切り出し付き） |
-| `translate/CaptionTranslator.kt` | ML Kit / Gemini / OpenAI の翻訳（自動判別時は文ごとに言語を判別） |
-| `cloud/GeminiClient.kt` / `cloud/OpenAiClient.kt` | Gemini・OpenAI の API 呼び出し |
+| `translate/CaptionTranslator.kt` | ML Kit / Google翻訳 / Gemini / OpenAI の翻訳（自動判別時は文ごとに言語を判別） |
+| `cloud/` | Google翻訳・Gemini・OpenAI の API 呼び出し |
 | `CaptionPipeline.kt` | 認識→翻訳→表示の受け渡し |
 | `CaptionOverlay.kt` | 画面に重ねる字幕 |
 | `models/` | モデルのダウンロード（途中から再開可）と管理 |

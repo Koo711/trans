@@ -23,6 +23,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import jp.autojimaku.cloud.GeminiClient
+import jp.autojimaku.cloud.GoogleTranslateClient
 import jp.autojimaku.cloud.OpenAiClient
 import jp.autojimaku.models.ModelKind
 import jp.autojimaku.models.SherpaModels
@@ -33,6 +34,7 @@ import jp.autojimaku.speech.SpeechEngine
 import jp.autojimaku.speech.VoskEngine
 import jp.autojimaku.translate.CaptionTranslator
 import jp.autojimaku.translate.GeminiCaptionTranslator
+import jp.autojimaku.translate.GoogleCloudCaptionTranslator
 import jp.autojimaku.translate.MlKitCaptionTranslator
 import jp.autojimaku.translate.OpenAiCaptionTranslator
 
@@ -196,11 +198,21 @@ class CaptionService : Service() {
             )
             tr = when (settings.translateEngine) {
                 TranslateEngineType.MLKIT -> {
-                    if (!lang.mlKitOk) throw IllegalStateException("${lang.label}は端末内翻訳に対応していません。翻訳を「Gemini」か「OpenAI」にしてください")
+                    if (!lang.mlKitOk) throw IllegalStateException("${lang.label}は端末内翻訳に対応していません。翻訳を「Google翻訳」「Gemini」「OpenAI」のどれかにしてください")
                     mlKit()
                 }
                 TranslateEngineType.OPENAI ->
                     OpenAiCaptionTranslator(requireClient(), settings.openAiChatModel, lang.label.takeUnless { lang.isAuto })
+                TranslateEngineType.GOOGLE -> {
+                    val googleKey = settings.googleKey
+                    if (googleKey.isBlank()) throw IllegalStateException("Google翻訳の APIキーが設定されていません")
+                    GoogleCloudCaptionTranslator(
+                        client = GoogleTranslateClient(googleKey),
+                        // 利用上限や通信エラーのときは端末内翻訳で続ける
+                        fallback = if (lang.mlKitOk) mlKit() else null,
+                        onStatus = { msg -> main.post { overlay?.showStatus(msg, 8000) } },
+                    )
+                }
                 TranslateEngineType.GEMINI -> {
                     val geminiKey = settings.geminiKey
                     if (geminiKey.isBlank()) throw IllegalStateException("Gemini の APIキーが設定されていません")

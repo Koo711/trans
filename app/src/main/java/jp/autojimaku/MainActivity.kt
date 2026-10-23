@@ -53,6 +53,8 @@ class MainActivity : Activity() {
     private lateinit var translateGroup: RadioGroup
     private lateinit var openAiSection: LinearLayout
     private lateinit var geminiSection: LinearLayout
+    private lateinit var googleSection: LinearLayout
+    private lateinit var googleKeyEdit: EditText
     private lateinit var geminiKeyEdit: EditText
     private lateinit var geminiModelEdit: EditText
     private lateinit var apiKeyEdit: EditText
@@ -126,6 +128,8 @@ class MainActivity : Activity() {
         translateGroup = requireViewById(R.id.translateGroup)
         openAiSection = requireViewById(R.id.openAiSection)
         geminiSection = requireViewById(R.id.geminiSection)
+        googleSection = requireViewById(R.id.googleSection)
+        googleKeyEdit = requireViewById(R.id.googleKeyEdit)
         geminiKeyEdit = requireViewById(R.id.geminiKeyEdit)
         geminiModelEdit = requireViewById(R.id.geminiModelEdit)
         apiKeyEdit = requireViewById(R.id.apiKeyEdit)
@@ -148,6 +152,7 @@ class MainActivity : Activity() {
         translateGroup.check(
             when (settings.translateEngine) {
                 TranslateEngineType.MLKIT -> R.id.radioMlKit
+                TranslateEngineType.GOOGLE -> R.id.radioTrGoogle
                 TranslateEngineType.GEMINI -> R.id.radioTrGemini
                 TranslateEngineType.OPENAI -> R.id.radioTrOpenAi
             },
@@ -163,6 +168,7 @@ class MainActivity : Activity() {
         whisperSpinner.adapter = sizes
         whisperSpinner.setSelection(settings.whisperSize.ordinal)
 
+        googleKeyEdit.setText(settings.googleKey)
         geminiKeyEdit.setText(settings.geminiKey)
         geminiModelEdit.setText(settings.geminiModel)
         apiKeyEdit.setText(settings.openAiKey)
@@ -199,6 +205,7 @@ class MainActivity : Activity() {
         translateGroup.setOnCheckedChangeListener { _, id ->
             settings.translateEngine = when (id) {
                 R.id.radioTrOpenAi -> TranslateEngineType.OPENAI
+                R.id.radioTrGoogle -> TranslateEngineType.GOOGLE
                 R.id.radioTrGemini -> TranslateEngineType.GEMINI
                 else -> TranslateEngineType.MLKIT
             }
@@ -225,6 +232,7 @@ class MainActivity : Activity() {
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+        googleKeyEdit.addTextChangedListener(afterChanged { settings.googleKey = it })
         geminiKeyEdit.addTextChangedListener(afterChanged { settings.geminiKey = it })
         geminiModelEdit.addTextChangedListener(afterChanged { settings.geminiModel = it })
         apiKeyEdit.addTextChangedListener(afterChanged { settings.openAiKey = it })
@@ -278,6 +286,7 @@ class MainActivity : Activity() {
         val needed = settings.asrEngine == AsrEngineType.OPENAI || settings.translateEngine == TranslateEngineType.OPENAI
         openAiSection.visibility = if (needed) View.VISIBLE else View.GONE
         geminiSection.visibility = if (settings.translateEngine == TranslateEngineType.GEMINI) View.VISIBLE else View.GONE
+        googleSection.visibility = if (settings.translateEngine == TranslateEngineType.GOOGLE) View.VISIBLE else View.GONE
     }
 
     private fun radioIdFor(engine: AsrEngineType) = when (engine) {
@@ -317,7 +326,8 @@ class MainActivity : Activity() {
             lang.mlKit != null -> "端末内翻訳: ○"
             settings.translateEngine == TranslateEngineType.OPENAI -> "端末内翻訳: ×（OpenAI で翻訳します）"
             settings.translateEngine == TranslateEngineType.GEMINI -> "端末内翻訳: ×（Gemini で翻訳します。利用上限のときは原文のまま表示）"
-            else -> "端末内翻訳: × → この言語は翻訳を「Gemini」か「OpenAI」にしてください"
+            settings.translateEngine == TranslateEngineType.GOOGLE -> "端末内翻訳: ×（Google翻訳で翻訳します。利用上限のときは原文のまま表示）"
+            else -> "端末内翻訳: × → この言語は翻訳を「Google翻訳」「Gemini」「OpenAI」のどれかにしてください"
         }
         languageInfo.text = "音声認識: 端末内・軽量 ${mark(lang.hasVosk)} ／ 端末内・多言語 ${mark(lang.hasOnDevice)}$sherpaNote ／ OpenAI ○\n$translateLine"
 
@@ -375,13 +385,18 @@ class MainActivity : Activity() {
             apiKeyEdit.requestFocus()
             return
         }
+        if (tr == TranslateEngineType.GOOGLE && settings.googleKey.isBlank()) {
+            setStatus("Google翻訳（オンライン）で翻訳する設定になっています。Cloud Translation API の APIキーを入力してください。")
+            googleKeyEdit.requestFocus()
+            return
+        }
         if (tr == TranslateEngineType.GEMINI && settings.geminiKey.isBlank()) {
             setStatus("Gemini で翻訳する設定になっています。Gemini の APIキーを入力してください。")
             geminiKeyEdit.requestFocus()
             return
         }
         if (tr == TranslateEngineType.MLKIT && !lang.mlKitOk) {
-            setStatus("${lang.label}は端末内翻訳に対応していません。翻訳を「Gemini」か「OpenAI」にしてください。")
+            setStatus("${lang.label}は端末内翻訳に対応していません。翻訳を「Google翻訳」「Gemini」「OpenAI」のどれかにしてください。")
             return
         }
         if (usableEngine(lang, asr) != asr) {
@@ -411,8 +426,8 @@ class MainActivity : Activity() {
             }
         }
         val mlKit = lang.mlKit
-        // Gemini のときも、利用上限時の代わり (端末内翻訳) に使うモデルを先に用意しておく
-        val needsMlKit = tr == TranslateEngineType.MLKIT || tr == TranslateEngineType.GEMINI
+        // Google翻訳・Gemini のときも、利用上限時の代わり (端末内翻訳) に使うモデルを先に用意しておく
+        val needsMlKit = tr != TranslateEngineType.OPENAI
         if (needsMlKit && mlKit != null && !lang.isAuto && !lang.isJapanese && mlKitCheckedFor != mlKit) {
             prepareMlKit(lang, mlKit)
             return

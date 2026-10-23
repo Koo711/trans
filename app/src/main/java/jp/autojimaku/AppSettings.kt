@@ -7,7 +7,7 @@ enum class AudioInput { PLAYBACK, MIC }
 
 /** 音声認識: 端末内・軽量 (Vosk) / 端末内・多言語 (Whisper・専用モデル) / OpenAI */
 enum class AsrEngineType { VOSK, SHERPA, OPENAI }
-enum class TranslateEngineType { MLKIT, OPENAI, GEMINI }
+enum class TranslateEngineType { MLKIT, GOOGLE, GEMINI, OPENAI }
 
 /** 端末内・多言語で使う Whisper の大きさ */
 enum class WhisperSize(val id: String, val label: String, val approxMb: Int) {
@@ -40,6 +40,11 @@ class AppSettings(context: Context) {
     var translateEngine: TranslateEngineType
         get() = enumValue(KEY_TRANSLATE, TranslateEngineType.MLKIT)
         set(v) = putString(KEY_TRANSLATE, v.name)
+
+    /** オンラインの Google翻訳 (Cloud Translation API) の APIキー */
+    var googleKey: String
+        get() = prefs.getString(KEY_GOOGLE_KEY, null) ?: ""
+        set(v) = putString(KEY_GOOGLE_KEY, v.trim())
 
     var geminiKey: String
         get() = prefs.getString(KEY_GEMINI_KEY, null) ?: ""
@@ -114,6 +119,7 @@ class AppSettings(context: Context) {
         const val KEY_WHISPER_SIZE = "whisper_size"
         const val KEY_OPENAI_KEY = "openai_key"
         const val KEY_GEMINI_KEY = "gemini_key"
+        const val KEY_GOOGLE_KEY = "google_translate_key"
         const val KEY_GEMINI_MODEL = "gemini_model"
         const val KEY_STT_MODEL = "openai_stt_model"
         const val KEY_CHAT_MODEL = "openai_chat_model"

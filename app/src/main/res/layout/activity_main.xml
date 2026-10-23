@@ -131,7 +131,13 @@
                 android:id="@+id/radioMlKit"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="端末内（無料・Google ML Kit）" />
+                android:text="端末内（無料・オフライン・Google翻訳のオフライン版）" />
+
+            <RadioButton
+                android:id="@+id/radioTrGoogle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Google翻訳（オンライン・より高精度・APIキーが必要・月50万文字まで無料）" />
 
             <RadioButton
                 android:id="@+id/radioTrGemini"
@@ -145,6 +151,32 @@
                 android:layout_height="wrap_content"
                 android:text="OpenAI（より自然な日本語・APIキーが必要）" />
         </RadioGroup>
+
+        <!-- Google翻訳 設定 -->
+        <LinearLayout
+            android:id="@+id/googleSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:text="Google翻訳（オンライン）の設定" />
+
+            <EditText
+                android:id="@+id/googleKeyEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Cloud Translation API の APIキー（AIza…）"
+                android:importantForAutofill="no"
+                android:inputType="textPassword"
+                android:singleLine="true" />
+
+            <TextView
+                style="@style/Hint"
+                android:autoLink="web"
+                android:text="APIキーは Google Cloud（https://console.cloud.google.com/apis/library/translate.googleapis.com ）で「Cloud Translation API」を有効にして作ります。請求先アカウントの登録が必要ですが、月50万文字までは無料です。上限に達したときや通信が切れたときは自動で端末内翻訳に切り替えます。APIキーはこの端末内にのみ保存されます。" />
+        </LinearLayout>
 
         <!-- Gemini 設定 -->
         <LinearLayout

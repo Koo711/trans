@@ -10,7 +10,8 @@ import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import jp.autojimaku.Languages
 import jp.autojimaku.cloud.GeminiClient
-import jp.autojimaku.cloud.GeminiException
+import jp.autojimaku.cloud.CloudException
+import jp.autojimaku.cloud.GoogleTranslateClient
 import jp.autojimaku.cloud.OpenAiClient
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -163,24 +164,22 @@ class OpenAiCaptionTranslator(
 }
 
 /**
- * Google Gemini で翻訳。文脈を踏まえた自然な字幕になり、どの言語にも対応する。
- * 利用上限 (無料枠の回数制限など) や通信エラーのときは、字幕が止まらないよう端末内翻訳に切り替える。
+ * クラウド翻訳 (Gemini・Google翻訳) の共通部分。
+ * 利用上限 (無料枠の回数・文字数制限など) や通信エラーのときは、字幕が止まらないよう端末内翻訳に切り替える。
+ * 利用上限のときは1分ほど端末内翻訳で続けてから、クラウドに戻る。
  */
-class GeminiCaptionTranslator(
-    private val client: GeminiClient,
-    private val model: String,
-    /** 動画の言語名 (自動判別は null) */
-    sourceLanguageLabel: String?,
-    /** Gemini が使えないときの代わり (端末内翻訳)。その言語が端末内翻訳に未対応なら null */
+abstract class CloudCaptionTranslator(
+    /** 代わりに使う端末内翻訳。その言語が端末内翻訳に未対応なら null */
     private val fallback: CaptionTranslator?,
     private val onStatus: (String) -> Unit,
 ) : CaptionTranslator {
 
-    private val systemPrompt = SubtitlePrompt.system(sourceLanguageLabel)
-
-    /** 利用上限に達したとき、この時刻 (ナノ秒) までは Gemini を呼ばない */
+    /** 利用上限に達したとき、この時刻 (ナノ秒) まではクラウドを呼ばない */
     private var pausedUntil = 0L
     private var lastNoticeAt = 0L
+
+    /** クラウドで翻訳する (失敗したら CloudException を投げる) */
+    protected abstract fun translateOnline(text: String, language: String?, context: List<String>): String
 
     override fun prepare() {}
 
@@ -189,19 +188,14 @@ class GeminiCaptionTranslator(
         val now = System.nanoTime()
         if (fallback != null && now < pausedUntil) return fallback.translate(text, language, context)
         return try {
-            client.generate(model, systemPrompt, SubtitlePrompt.user(text, context)).ifBlank { text }
-        } catch (e: GeminiException) {
-            // 一時的なエラー・返答なし (安全フィルタなど) は端末内翻訳で代わりに訳す
-            if (fallback == null || !(e.isTemporary || e.httpCode == 200)) throw e
-            if (e.httpCode == 429) pausedUntil = now + PAUSE_NANOS
-            if (now - lastNoticeAt > NOTICE_INTERVAL_NANOS || lastNoticeAt == 0L) {
+            translateOnline(text, language, context).ifBlank { text }
+        } catch (e: CloudException) {
+            if (fallback == null || !e.canFallBack) throw e
+            if (e.rateLimited) pausedUntil = now + PAUSE_NANOS
+            if (lastNoticeAt == 0L || now - lastNoticeAt > NOTICE_INTERVAL_NANOS) {
                 lastNoticeAt = now
                 onStatus(
-                    if (e.httpCode == 429) {
-                        "${e.message}。1分ほど端末内翻訳で続けます"
-                    } else {
-                        "${e.message}。この文は端末内翻訳で訳しました"
-                    },
+                    if (e.rateLimited) "${e.message}。1分ほど端末内翻訳で続けます" else "${e.message}。この文は端末内翻訳で訳しました",
                 )
             }
             fallback.translate(text, language, context)
@@ -215,5 +209,41 @@ class GeminiCaptionTranslator(
     private companion object {
         const val PAUSE_NANOS = 60_000_000_000L
         const val NOTICE_INTERVAL_NANOS = 30_000_000_000L
+    }
+}
+
+/** Google Gemini で翻訳。文脈を踏まえた自然な字幕になり、どの言語にも対応する */
+class GeminiCaptionTranslator(
+    private val client: GeminiClient,
+    private val model: String,
+    /** 動画の言語名 (自動判別は null) */
+    sourceLanguageLabel: String?,
+    fallback: CaptionTranslator?,
+    onStatus: (String) -> Unit,
+) : CloudCaptionTranslator(fallback, onStatus) {
+
+    private val systemPrompt = SubtitlePrompt.system(sourceLanguageLabel)
+
+    override fun translateOnline(text: String, language: String?, context: List<String>): String =
+        client.generate(model, systemPrompt, SubtitlePrompt.user(text, context))
+}
+
+/** オンラインの Google翻訳 (Cloud Translation API)。端末内翻訳より高精度で、どの言語にも対応する */
+class GoogleCloudCaptionTranslator(
+    private val client: GoogleTranslateClient,
+    fallback: CaptionTranslator?,
+    onStatus: (String) -> Unit,
+) : CloudCaptionTranslator(fallback, onStatus) {
+
+    override fun translateOnline(text: String, language: String?, context: List<String>): String =
+        client.translate(text, sourceCode(language))
+
+    /** Google翻訳に渡す元の言語。中国語は簡体字・繁体字を自動で判別させるため渡さない */
+    private fun sourceCode(language: String?): String? {
+        val code = language?.lowercase()?.substringBefore('-') ?: return null
+        return when (code) {
+            "zh", "yue" -> null
+            else -> normalizeLanguage(code)
+        }
     }
 }

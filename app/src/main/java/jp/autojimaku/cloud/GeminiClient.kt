@@ -6,10 +6,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
-class GeminiException(message: String, val httpCode: Int = -1) : IOException(message) {
-    /** 利用上限・混雑など、しばらくすると直るエラー */
-    val isTemporary: Boolean get() = httpCode == 429 || httpCode >= 500 || httpCode == -1
-}
+class GeminiException(message: String, httpCode: Int = -1) : CloudException(message, httpCode)
 
 /** Google Gemini API の最小限のクライアント (外部ライブラリなし)。ネットワーク処理なのでバックグラウンドスレッドで呼ぶこと */
 class GeminiClient(
