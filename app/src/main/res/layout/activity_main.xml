@@ -134,11 +134,57 @@
                 android:text="端末内（無料・Google ML Kit）" />
 
             <RadioButton
+                android:id="@+id/radioTrGemini"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Gemini（自然な日本語・APIキーが必要・無料枠あり）" />
+
+            <RadioButton
                 android:id="@+id/radioTrOpenAi"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="OpenAI（より自然な日本語・APIキーが必要）" />
         </RadioGroup>
+
+        <!-- Gemini 設定 -->
+        <LinearLayout
+            android:id="@+id/geminiSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:text="Gemini の設定" />
+
+            <EditText
+                android:id="@+id/geminiKeyEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="APIキー（AIza…）"
+                android:importantForAutofill="no"
+                android:inputType="textPassword"
+                android:singleLine="true" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_marginTop="8dp"
+                android:text="使用モデル（通常は変更不要）" />
+
+            <EditText
+                android:id="@+id/geminiModelEdit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="翻訳モデル"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <TextView
+                style="@style/Hint"
+                android:autoLink="web"
+                android:text="APIキーは Google AI Studio（https://aistudio.google.com/apikey ）で作れます。無料枠には回数制限があり、上限に達したときは自動で端末内翻訳に切り替えます。無料枠では送った文章が Google のサービス改善に使われることがあります。APIキーはこの端末内にのみ保存されます。" />
+        </LinearLayout>
 
         <!-- OpenAI 設定 -->
         <LinearLayout

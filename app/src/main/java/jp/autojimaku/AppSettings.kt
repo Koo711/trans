@@ -7,7 +7,7 @@ enum class AudioInput { PLAYBACK, MIC }
 
 /** 音声認識: 端末内・軽量 (Vosk) / 端末内・多言語 (Whisper・専用モデル) / OpenAI */
 enum class AsrEngineType { VOSK, SHERPA, OPENAI }
-enum class TranslateEngineType { MLKIT, OPENAI }
+enum class TranslateEngineType { MLKIT, OPENAI, GEMINI }
 
 /** 端末内・多言語で使う Whisper の大きさ */
 enum class WhisperSize(val id: String, val label: String, val approxMb: Int) {
@@ -40,6 +40,14 @@ class AppSettings(context: Context) {
     var translateEngine: TranslateEngineType
         get() = enumValue(KEY_TRANSLATE, TranslateEngineType.MLKIT)
         set(v) = putString(KEY_TRANSLATE, v.name)
+
+    var geminiKey: String
+        get() = prefs.getString(KEY_GEMINI_KEY, null) ?: ""
+        set(v) = putString(KEY_GEMINI_KEY, v.trim())
+
+    var geminiModel: String
+        get() = prefs.getString(KEY_GEMINI_MODEL, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_GEMINI_MODEL
+        set(v) = putString(KEY_GEMINI_MODEL, v.trim())
 
     var openAiKey: String
         get() = prefs.getString(KEY_OPENAI_KEY, null) ?: ""
@@ -105,6 +113,8 @@ class AppSettings(context: Context) {
         const val KEY_TRANSLATE = "translate_engine"
         const val KEY_WHISPER_SIZE = "whisper_size"
         const val KEY_OPENAI_KEY = "openai_key"
+        const val KEY_GEMINI_KEY = "gemini_key"
+        const val KEY_GEMINI_MODEL = "gemini_model"
         const val KEY_STT_MODEL = "openai_stt_model"
         const val KEY_CHAT_MODEL = "openai_chat_model"
         const val KEY_FONT_SIZE = "font_size"
@@ -117,6 +127,7 @@ class AppSettings(context: Context) {
 
         const val DEFAULT_STT_MODEL = "gpt-4o-mini-transcribe"
         const val DEFAULT_CHAT_MODEL = "gpt-5-mini"
+        const val DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 
         const val MIN_FONT_SIZE = 14
         const val MAX_FONT_SIZE = 36

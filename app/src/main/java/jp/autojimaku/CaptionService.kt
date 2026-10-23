@@ -22,6 +22,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import jp.autojimaku.cloud.GeminiClient
 import jp.autojimaku.cloud.OpenAiClient
 import jp.autojimaku.models.ModelKind
 import jp.autojimaku.models.SherpaModels
@@ -31,6 +32,7 @@ import jp.autojimaku.speech.SherpaEngine
 import jp.autojimaku.speech.SpeechEngine
 import jp.autojimaku.speech.VoskEngine
 import jp.autojimaku.translate.CaptionTranslator
+import jp.autojimaku.translate.GeminiCaptionTranslator
 import jp.autojimaku.translate.MlKitCaptionTranslator
 import jp.autojimaku.translate.OpenAiCaptionTranslator
 
@@ -187,16 +189,30 @@ class CaptionService : Service() {
             fun requireClient() = client ?: throw IllegalStateException("OpenAI の APIキーが設定されていません")
 
             status("翻訳の準備中…")
+            val showStatus: (String) -> Unit = { msg -> main.post { overlay?.showStatus(msg, 0) } }
+            fun mlKit() = MlKitCaptionTranslator(
+                fixedLanguage = if (lang.isAuto || lang.isJapanese) null else lang.mlKit,
+                onStatus = showStatus,
+            )
             tr = when (settings.translateEngine) {
                 TranslateEngineType.MLKIT -> {
-                    if (!lang.mlKitOk) throw IllegalStateException("${lang.label}は端末内翻訳に対応していません。翻訳を「OpenAI」にしてください")
-                    MlKitCaptionTranslator(
-                        fixedLanguage = if (lang.isAuto || lang.isJapanese) null else lang.mlKit,
-                        onStatus = { msg -> main.post { overlay?.showStatus(msg, 0) } },
-                    )
+                    if (!lang.mlKitOk) throw IllegalStateException("${lang.label}は端末内翻訳に対応していません。翻訳を「Gemini」か「OpenAI」にしてください")
+                    mlKit()
                 }
                 TranslateEngineType.OPENAI ->
                     OpenAiCaptionTranslator(requireClient(), settings.openAiChatModel, lang.label.takeUnless { lang.isAuto })
+                TranslateEngineType.GEMINI -> {
+                    val geminiKey = settings.geminiKey
+                    if (geminiKey.isBlank()) throw IllegalStateException("Gemini の APIキーが設定されていません")
+                    GeminiCaptionTranslator(
+                        client = GeminiClient(geminiKey),
+                        model = settings.geminiModel,
+                        sourceLanguageLabel = lang.label.takeUnless { lang.isAuto },
+                        // 利用上限や通信エラーのときは端末内翻訳で続ける
+                        fallback = if (lang.mlKitOk) mlKit() else null,
+                        onStatus = { msg -> main.post { overlay?.showStatus(msg, 8000) } },
+                    )
+                }
             }
             tr.prepare()
 

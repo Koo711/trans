@@ -52,6 +52,9 @@ class MainActivity : Activity() {
     private lateinit var asrInfo: TextView
     private lateinit var translateGroup: RadioGroup
     private lateinit var openAiSection: LinearLayout
+    private lateinit var geminiSection: LinearLayout
+    private lateinit var geminiKeyEdit: EditText
+    private lateinit var geminiModelEdit: EditText
     private lateinit var apiKeyEdit: EditText
     private lateinit var sttModelEdit: EditText
     private lateinit var chatModelEdit: EditText
@@ -122,6 +125,9 @@ class MainActivity : Activity() {
         asrInfo = requireViewById(R.id.asrInfo)
         translateGroup = requireViewById(R.id.translateGroup)
         openAiSection = requireViewById(R.id.openAiSection)
+        geminiSection = requireViewById(R.id.geminiSection)
+        geminiKeyEdit = requireViewById(R.id.geminiKeyEdit)
+        geminiModelEdit = requireViewById(R.id.geminiModelEdit)
         apiKeyEdit = requireViewById(R.id.apiKeyEdit)
         sttModelEdit = requireViewById(R.id.sttModelEdit)
         chatModelEdit = requireViewById(R.id.chatModelEdit)
@@ -139,7 +145,13 @@ class MainActivity : Activity() {
     private fun loadValues() {
         inputGroup.check(if (settings.audioInput == AudioInput.PLAYBACK) R.id.radioPlayback else R.id.radioMic)
         asrGroup.check(radioIdFor(settings.asrEngine))
-        translateGroup.check(if (settings.translateEngine == TranslateEngineType.MLKIT) R.id.radioMlKit else R.id.radioTrOpenAi)
+        translateGroup.check(
+            when (settings.translateEngine) {
+                TranslateEngineType.MLKIT -> R.id.radioMlKit
+                TranslateEngineType.GEMINI -> R.id.radioTrGemini
+                TranslateEngineType.OPENAI -> R.id.radioTrOpenAi
+            },
+        )
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, Languages.all.map { it.label })
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -151,6 +163,8 @@ class MainActivity : Activity() {
         whisperSpinner.adapter = sizes
         whisperSpinner.setSelection(settings.whisperSize.ordinal)
 
+        geminiKeyEdit.setText(settings.geminiKey)
+        geminiModelEdit.setText(settings.geminiModel)
         apiKeyEdit.setText(settings.openAiKey)
         sttModelEdit.setText(settings.openAiSttModel)
         chatModelEdit.setText(settings.openAiChatModel)
@@ -183,7 +197,11 @@ class MainActivity : Activity() {
             updateLanguageUi()
         }
         translateGroup.setOnCheckedChangeListener { _, id ->
-            settings.translateEngine = if (id == R.id.radioTrOpenAi) TranslateEngineType.OPENAI else TranslateEngineType.MLKIT
+            settings.translateEngine = when (id) {
+                R.id.radioTrOpenAi -> TranslateEngineType.OPENAI
+                R.id.radioTrGemini -> TranslateEngineType.GEMINI
+                else -> TranslateEngineType.MLKIT
+            }
             updateOpenAiSection()
             updateLanguageUi()
         }
@@ -207,6 +225,8 @@ class MainActivity : Activity() {
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+        geminiKeyEdit.addTextChangedListener(afterChanged { settings.geminiKey = it })
+        geminiModelEdit.addTextChangedListener(afterChanged { settings.geminiModel = it })
         apiKeyEdit.addTextChangedListener(afterChanged { settings.openAiKey = it })
         sttModelEdit.addTextChangedListener(afterChanged { settings.openAiSttModel = it })
         chatModelEdit.addTextChangedListener(afterChanged { settings.openAiChatModel = it })
@@ -257,6 +277,7 @@ class MainActivity : Activity() {
     private fun updateOpenAiSection() {
         val needed = settings.asrEngine == AsrEngineType.OPENAI || settings.translateEngine == TranslateEngineType.OPENAI
         openAiSection.visibility = if (needed) View.VISIBLE else View.GONE
+        geminiSection.visibility = if (settings.translateEngine == TranslateEngineType.GEMINI) View.VISIBLE else View.GONE
     }
 
     private fun radioIdFor(engine: AsrEngineType) = when (engine) {
@@ -295,7 +316,8 @@ class MainActivity : Activity() {
             lang.isAuto -> "翻訳: 文ごとに言語を判別して翻訳します（初めての言語は翻訳モデルを自動でダウンロード）"
             lang.mlKit != null -> "端末内翻訳: ○"
             settings.translateEngine == TranslateEngineType.OPENAI -> "端末内翻訳: ×（OpenAI で翻訳します）"
-            else -> "端末内翻訳: × → この言語は翻訳を「OpenAI」にしてください"
+            settings.translateEngine == TranslateEngineType.GEMINI -> "端末内翻訳: ×（Gemini で翻訳します。利用上限のときは原文のまま表示）"
+            else -> "端末内翻訳: × → この言語は翻訳を「Gemini」か「OpenAI」にしてください"
         }
         languageInfo.text = "音声認識: 端末内・軽量 ${mark(lang.hasVosk)} ／ 端末内・多言語 ${mark(lang.hasOnDevice)}$sherpaNote ／ OpenAI ○\n$translateLine"
 
@@ -353,8 +375,13 @@ class MainActivity : Activity() {
             apiKeyEdit.requestFocus()
             return
         }
+        if (tr == TranslateEngineType.GEMINI && settings.geminiKey.isBlank()) {
+            setStatus("Gemini で翻訳する設定になっています。Gemini の APIキーを入力してください。")
+            geminiKeyEdit.requestFocus()
+            return
+        }
         if (tr == TranslateEngineType.MLKIT && !lang.mlKitOk) {
-            setStatus("${lang.label}は端末内翻訳に対応していません。翻訳を「OpenAI」にしてください。")
+            setStatus("${lang.label}は端末内翻訳に対応していません。翻訳を「Gemini」か「OpenAI」にしてください。")
             return
         }
         if (usableEngine(lang, asr) != asr) {
@@ -384,7 +411,9 @@ class MainActivity : Activity() {
             }
         }
         val mlKit = lang.mlKit
-        if (tr == TranslateEngineType.MLKIT && mlKit != null && !lang.isAuto && !lang.isJapanese && mlKitCheckedFor != mlKit) {
+        // Gemini のときも、利用上限時の代わり (端末内翻訳) に使うモデルを先に用意しておく
+        val needsMlKit = tr == TranslateEngineType.MLKIT || tr == TranslateEngineType.GEMINI
+        if (needsMlKit && mlKit != null && !lang.isAuto && !lang.isJapanese && mlKitCheckedFor != mlKit) {
             prepareMlKit(lang, mlKit)
             return
         }

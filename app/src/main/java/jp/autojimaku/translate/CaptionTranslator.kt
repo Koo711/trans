@@ -9,6 +9,8 @@ import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import jp.autojimaku.Languages
+import jp.autojimaku.cloud.GeminiClient
+import jp.autojimaku.cloud.GeminiException
 import jp.autojimaku.cloud.OpenAiClient
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -118,15 +120,9 @@ class MlKitCaptionTranslator(
     }
 }
 
-/** OpenAI のチャットモデルで翻訳。文脈を踏まえた自然な字幕になり、どの言語にも対応する */
-class OpenAiCaptionTranslator(
-    private val client: OpenAiClient,
-    private val model: String,
-    /** 動画の言語名 (自動判別は null) */
-    sourceLanguageLabel: String?,
-) : CaptionTranslator {
-
-    private val systemPrompt =
+/** クラウドの AI (OpenAI・Gemini) に渡す翻訳の指示 */
+internal object SubtitlePrompt {
+    fun system(sourceLanguageLabel: String?): String =
         "あなたは動画のリアルタイム字幕の翻訳者です。" +
             (if (sourceLanguageLabel != null) "${sourceLanguageLabel}の発話を" else "発話（言語はさまざま）を") +
             "日本語の字幕として自然で読みやすい短い文に翻訳してください。" +
@@ -135,21 +131,89 @@ class OpenAiCaptionTranslator(
             "発話がすでに日本語なら、そのまま出力してください。" +
             "出力は日本語の字幕だけにしてください（説明・引用符・前置きは不要）。"
 
+    fun user(text: String, context: List<String>): String = buildString {
+        if (context.isNotEmpty()) {
+            append("直前の発話（参考。翻訳しない）:\n")
+            for (c in context) append("- ").append(c).append('\n')
+            append('\n')
+        }
+        append("翻訳する発話:\n")
+        append(text)
+    }
+}
+
+/** OpenAI のチャットモデルで翻訳。文脈を踏まえた自然な字幕になり、どの言語にも対応する */
+class OpenAiCaptionTranslator(
+    private val client: OpenAiClient,
+    private val model: String,
+    /** 動画の言語名 (自動判別は null) */
+    sourceLanguageLabel: String?,
+) : CaptionTranslator {
+
+    private val systemPrompt = SubtitlePrompt.system(sourceLanguageLabel)
+
     override fun prepare() {}
 
     override fun translate(text: String, language: String?, context: List<String>): String? {
         if (language != null && normalizeLanguage(language) == "ja") return text
-        val user = buildString {
-            if (context.isNotEmpty()) {
-                append("直前の発話（参考。翻訳しない）:\n")
-                for (c in context) append("- ").append(c).append('\n')
-                append('\n')
-            }
-            append("翻訳する発話:\n")
-            append(text)
-        }
-        return client.chat(model, systemPrompt, user).ifBlank { text }
+        return client.chat(model, systemPrompt, SubtitlePrompt.user(text, context)).ifBlank { text }
     }
 
     override fun close() {}
+}
+
+/**
+ * Google Gemini で翻訳。文脈を踏まえた自然な字幕になり、どの言語にも対応する。
+ * 利用上限 (無料枠の回数制限など) や通信エラーのときは、字幕が止まらないよう端末内翻訳に切り替える。
+ */
+class GeminiCaptionTranslator(
+    private val client: GeminiClient,
+    private val model: String,
+    /** 動画の言語名 (自動判別は null) */
+    sourceLanguageLabel: String?,
+    /** Gemini が使えないときの代わり (端末内翻訳)。その言語が端末内翻訳に未対応なら null */
+    private val fallback: CaptionTranslator?,
+    private val onStatus: (String) -> Unit,
+) : CaptionTranslator {
+
+    private val systemPrompt = SubtitlePrompt.system(sourceLanguageLabel)
+
+    /** 利用上限に達したとき、この時刻 (ナノ秒) までは Gemini を呼ばない */
+    private var pausedUntil = 0L
+    private var lastNoticeAt = 0L
+
+    override fun prepare() {}
+
+    override fun translate(text: String, language: String?, context: List<String>): String? {
+        if (language != null && normalizeLanguage(language) == "ja") return text
+        val now = System.nanoTime()
+        if (fallback != null && now < pausedUntil) return fallback.translate(text, language, context)
+        return try {
+            client.generate(model, systemPrompt, SubtitlePrompt.user(text, context)).ifBlank { text }
+        } catch (e: GeminiException) {
+            // 一時的なエラー・返答なし (安全フィルタなど) は端末内翻訳で代わりに訳す
+            if (fallback == null || !(e.isTemporary || e.httpCode == 200)) throw e
+            if (e.httpCode == 429) pausedUntil = now + PAUSE_NANOS
+            if (now - lastNoticeAt > NOTICE_INTERVAL_NANOS || lastNoticeAt == 0L) {
+                lastNoticeAt = now
+                onStatus(
+                    if (e.httpCode == 429) {
+                        "${e.message}。1分ほど端末内翻訳で続けます"
+                    } else {
+                        "${e.message}。この文は端末内翻訳で訳しました"
+                    },
+                )
+            }
+            fallback.translate(text, language, context)
+        }
+    }
+
+    override fun close() {
+        fallback?.close()
+    }
+
+    private companion object {
+        const val PAUSE_NANOS = 60_000_000_000L
+        const val NOTICE_INTERVAL_NANOS = 30_000_000_000L
+    }
 }
