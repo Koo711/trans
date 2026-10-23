@@ -32,6 +32,7 @@ import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
+import jp.autojimaku.models.GemmaModel
 import jp.autojimaku.models.ModelKind
 import jp.autojimaku.models.SherpaModel
 import jp.autojimaku.models.SherpaModels
@@ -54,6 +55,11 @@ class MainActivity : Activity() {
     private lateinit var openAiSection: LinearLayout
     private lateinit var geminiSection: LinearLayout
     private lateinit var googleSection: LinearLayout
+    private lateinit var gemmaSection: LinearLayout
+    private lateinit var gemmaStatus: TextView
+    private lateinit var gemmaDownloadButton: Button
+    private lateinit var gemmaImportButton: Button
+    private lateinit var gemmaDeleteButton: Button
     private lateinit var googleKeyEdit: EditText
     private lateinit var geminiKeyEdit: EditText
     private lateinit var geminiModelEdit: EditText
@@ -129,6 +135,11 @@ class MainActivity : Activity() {
         openAiSection = requireViewById(R.id.openAiSection)
         geminiSection = requireViewById(R.id.geminiSection)
         googleSection = requireViewById(R.id.googleSection)
+        gemmaSection = requireViewById(R.id.gemmaSection)
+        gemmaStatus = requireViewById(R.id.gemmaStatus)
+        gemmaDownloadButton = requireViewById(R.id.gemmaDownloadButton)
+        gemmaImportButton = requireViewById(R.id.gemmaImportButton)
+        gemmaDeleteButton = requireViewById(R.id.gemmaDeleteButton)
         googleKeyEdit = requireViewById(R.id.googleKeyEdit)
         geminiKeyEdit = requireViewById(R.id.geminiKeyEdit)
         geminiModelEdit = requireViewById(R.id.geminiModelEdit)
@@ -152,6 +163,7 @@ class MainActivity : Activity() {
         translateGroup.check(
             when (settings.translateEngine) {
                 TranslateEngineType.MLKIT -> R.id.radioMlKit
+                TranslateEngineType.GEMMA -> R.id.radioTrGemma
                 TranslateEngineType.GOOGLE -> R.id.radioTrGoogle
                 TranslateEngineType.GEMINI -> R.id.radioTrGemini
                 TranslateEngineType.OPENAI -> R.id.radioTrOpenAi
@@ -205,6 +217,7 @@ class MainActivity : Activity() {
         translateGroup.setOnCheckedChangeListener { _, id ->
             settings.translateEngine = when (id) {
                 R.id.radioTrOpenAi -> TranslateEngineType.OPENAI
+                R.id.radioTrGemma -> TranslateEngineType.GEMMA
                 R.id.radioTrGoogle -> TranslateEngineType.GOOGLE
                 R.id.radioTrGemini -> TranslateEngineType.GEMINI
                 else -> TranslateEngineType.MLKIT
@@ -262,6 +275,25 @@ class MainActivity : Activity() {
         showOriginalSwitch.setOnCheckedChangeListener { _, checked -> settings.showOriginal = checked }
         touchThroughSwitch.setOnCheckedChangeListener { _, checked -> settings.touchThrough = checked }
 
+        gemmaDownloadButton.setOnClickListener { confirmGemmaDownload(thenStart = false) }
+        gemmaImportButton.setOnClickListener { pickGemmaFile() }
+        gemmaDeleteButton.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("端末内AIのモデルを削除")
+                .setMessage("Gemma のモデル（${GemmaModel.SIZE_LABEL}）を削除して、スマホの空き容量を増やします。使うときはもう一度ダウンロードが必要です。")
+                .setPositiveButton("削除") { _, _ ->
+                    if (CaptionService.isRunning && settings.translateEngine == TranslateEngineType.GEMMA) {
+                        setStatus("字幕を停止してから削除してください")
+                    } else {
+                        GemmaModel.delete(this)
+                        updateGemmaUi()
+                        setStatus("端末内AIのモデルを削除しました")
+                    }
+                }
+                .setNegativeButton("キャンセル", null)
+                .show()
+        }
+
         startButton.setOnClickListener {
             if (CaptionService.isRunning) {
                 CaptionService.stop(this)
@@ -287,6 +319,8 @@ class MainActivity : Activity() {
         openAiSection.visibility = if (needed) View.VISIBLE else View.GONE
         geminiSection.visibility = if (settings.translateEngine == TranslateEngineType.GEMINI) View.VISIBLE else View.GONE
         googleSection.visibility = if (settings.translateEngine == TranslateEngineType.GOOGLE) View.VISIBLE else View.GONE
+        gemmaSection.visibility = if (settings.translateEngine == TranslateEngineType.GEMMA) View.VISIBLE else View.GONE
+        updateGemmaUi()
     }
 
     private fun radioIdFor(engine: AsrEngineType) = when (engine) {
@@ -327,6 +361,7 @@ class MainActivity : Activity() {
             settings.translateEngine == TranslateEngineType.OPENAI -> "端末内翻訳: ×（OpenAI で翻訳します）"
             settings.translateEngine == TranslateEngineType.GEMINI -> "端末内翻訳: ×（Gemini で翻訳します。利用上限のときは原文のまま表示）"
             settings.translateEngine == TranslateEngineType.GOOGLE -> "端末内翻訳: ×（Google翻訳で翻訳します。利用上限のときは原文のまま表示）"
+            settings.translateEngine == TranslateEngineType.GEMMA -> "端末内翻訳: ×（端末内AI（Gemma）で翻訳します）"
             else -> "端末内翻訳: × → この言語は翻訳を「Google翻訳」「Gemini」「OpenAI」のどれかにしてください"
         }
         languageInfo.text = "音声認識: 端末内・軽量 ${mark(lang.hasVosk)} ／ 端末内・多言語 ${mark(lang.hasOnDevice)}$sherpaNote ／ OpenAI ○\n$translateLine"
@@ -345,6 +380,83 @@ class MainActivity : Activity() {
             AsrEngineType.OPENAI -> ""
         }
         asrInfo.visibility = if (asrInfo.text.isNullOrEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun updateGemmaUi() {
+        val ready = GemmaModel.isReady(this)
+        gemmaStatus.text = if (ready) {
+            "モデル: 用意済み（${GemmaModel.sizeOnDiskMb(this)}MB）"
+        } else {
+            "モデル: 未ダウンロード（${GemmaModel.SIZE_LABEL}）"
+        }
+        gemmaDownloadButton.isEnabled = !ready && !preparing
+        gemmaImportButton.isEnabled = !ready && !preparing
+        gemmaDeleteButton.isEnabled = ready && !preparing
+    }
+
+    private fun confirmGemmaDownload(thenStart: Boolean) {
+        AlertDialog.Builder(this)
+            .setTitle("端末内AI（Gemma 4 E2B）のダウンロード")
+            .setMessage(
+                "スマホの中で翻訳するための AI モデル（${GemmaModel.SIZE_LABEL}）を一度だけダウンロードします。" +
+                    "大きいので Wi-Fi でのダウンロードをおすすめします。途中で止まっても、次回は続きから再開します。\n\n" +
+                    "パソコンなどで入手した gemma-4-E2B-it.litertlm ファイルがスマホにある場合は「ファイルから」を選んでください。",
+            )
+            .setPositiveButton("ダウンロード") { _, _ -> downloadGemma(thenStart) }
+            .setNeutralButton("ファイルから") { _, _ -> pickGemmaFile() }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
+    private fun downloadGemma(thenStart: Boolean) {
+        runGemmaTask("端末内AIのモデルをダウンロード中…", thenStart) { onPct ->
+            GemmaModel.download(applicationContext, onPct)
+        }
+    }
+
+    private fun pickGemmaFile() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        try {
+            startActivityForResult(intent, REQ_GEMMA_FILE)
+        } catch (_: ActivityNotFoundException) {
+            setStatus("ファイルを選ぶ画面を開けませんでした")
+        }
+    }
+
+    private fun importGemma(uri: Uri) {
+        runGemmaTask("端末内AIのモデルを読み込み中…", thenStart = false) { onPct ->
+            GemmaModel.import(applicationContext, uri, onPct)
+        }
+    }
+
+    /** ダウンロード・読み込みを別スレッドで行い、進み具合を表示する */
+    private fun runGemmaTask(message: String, thenStart: Boolean, task: ((Int) -> Unit) -> Unit) {
+        setPreparing(true, message)
+        updateGemmaUi()
+        Thread {
+            try {
+                task { pct ->
+                    runOnUiThread {
+                        progressBar.isIndeterminate = false
+                        progressBar.progress = pct
+                        setStatus("$message $pct%")
+                    }
+                }
+                runOnUiThread {
+                    setPreparing(false, "端末内AIのモデルの準備ができました")
+                    updateGemmaUi()
+                    if (thenStart && !isDestroyed) proceed()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    setPreparing(false, "端末内AIのモデルを用意できませんでした: ${e.message}")
+                    updateGemmaUi()
+                }
+            }
+        }.start()
     }
 
     private fun updateUi() {
@@ -383,6 +495,10 @@ class MainActivity : Activity() {
         if ((asr == AsrEngineType.OPENAI || tr == TranslateEngineType.OPENAI) && settings.openAiKey.isBlank()) {
             setStatus("OpenAI を使う設定になっています。APIキーを入力してください。")
             apiKeyEdit.requestFocus()
+            return
+        }
+        if (tr == TranslateEngineType.GEMMA && !GemmaModel.isReady(this)) {
+            confirmGemmaDownload(thenStart = true)
             return
         }
         if (tr == TranslateEngineType.GOOGLE && settings.googleKey.isBlank()) {
@@ -617,6 +733,11 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_GEMMA_FILE) {
+            val uri = data?.data
+            if (resultCode == Activity.RESULT_OK && uri != null) importGemma(uri) else setStatus("キャンセルされました")
+            return
+        }
         if (requestCode != REQ_PROJECTION) return
         if (resultCode == Activity.RESULT_OK && data != null) {
             startCaptions(resultCode, data)
@@ -638,5 +759,6 @@ class MainActivity : Activity() {
     private companion object {
         const val REQ_PERMISSIONS = 1
         const val REQ_PROJECTION = 2
+        const val REQ_GEMMA_FILE = 3
     }
 }

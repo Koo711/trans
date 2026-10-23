@@ -14,8 +14,8 @@ android {
         // 他アプリの再生音声の取得 (AudioPlaybackCapture) は Android 10 以降
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "2.4"
+        versionCode = 7
+        versionName = "2.5"
 
         ndk {
             // スマホ向け。エミュレーター (PC) で試す場合は "x86_64" を追加する
@@ -74,4 +74,6 @@ dependencies {
     // 端末内の翻訳と言語判別 (Google ML Kit)
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:language-id:17.0.6")
+    // 端末内AI翻訳 (Gemma 4 E2B を LiteRT-LM で動かす)
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
 }

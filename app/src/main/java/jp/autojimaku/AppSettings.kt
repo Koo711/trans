@@ -7,7 +7,7 @@ enum class AudioInput { PLAYBACK, MIC }
 
 /** 音声認識: 端末内・軽量 (Vosk) / 端末内・多言語 (Whisper・専用モデル) / OpenAI */
 enum class AsrEngineType { VOSK, SHERPA, OPENAI }
-enum class TranslateEngineType { MLKIT, GOOGLE, GEMINI, OPENAI }
+enum class TranslateEngineType { MLKIT, GEMMA, GOOGLE, GEMINI, OPENAI }
 
 /** 端末内・多言語で使う Whisper の大きさ */
 enum class WhisperSize(val id: String, val label: String, val approxMb: Int) {

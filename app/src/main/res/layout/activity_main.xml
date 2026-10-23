@@ -134,6 +134,12 @@
                 android:text="端末内（無料・オフライン・Google翻訳のオフライン版）" />
 
             <RadioButton
+                android:id="@+id/radioTrGemma"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="端末内AI（Gemma 4 E2B・無料・オフライン・自然な日本語・約2.6GB）" />
+
+            <RadioButton
                 android:id="@+id/radioTrGoogle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -151,6 +157,55 @@
                 android:layout_height="wrap_content"
                 android:text="OpenAI（より自然な日本語・APIキーが必要）" />
         </RadioGroup>
+
+        <!-- 端末内AI (Gemma) 設定 -->
+        <LinearLayout
+            android:id="@+id/gemmaSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:text="端末内AI（Gemma 4 E2B）" />
+
+            <TextView
+                android:id="@+id/gemmaStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/gemmaDownloadButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="ダウンロード" />
+
+                <Button
+                    android:id="@+id/gemmaImportButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="ファイルから" />
+
+                <Button
+                    android:id="@+id/gemmaDeleteButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="削除" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/Hint"
+                android:text="スマホの中で動く Google の AI で翻訳します。通信もAPIキーも不要です。メモリ8GB以上のスマホをおすすめします（足りないと読み込めないことがあります）。\n・Google AI Edge Gallery などほかのアプリに入れたモデルは、Android の仕組み上このアプリからは使えません。そのため一度だけこのアプリにも用意します（ダウンロードは Wi-Fi で）。\n・パソコンなどで入手した gemma-4-E2B-it.litertlm ファイルがスマホにあれば「ファイルから」で読み込めます。" />
+        </LinearLayout>
 
         <!-- Google翻訳 設定 -->
         <LinearLayout

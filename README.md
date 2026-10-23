@@ -6,7 +6,8 @@ Android スマホで再生中の動画（YouTube・Udemy など）の音声を�
 - 全画面・横向きの動画の上にも表示されます。字幕は常に画面内に収まり、つまみをドラッグして移動できます
 - 翻訳した字幕は履歴として残り、字幕の箱を上下にスワイプすると前の字幕まで見返せます
 - **無料・オフライン**（端末内の音声認識＋Google ML Kit 翻訳）で動きます
-- 翻訳はオンラインの **Google翻訳**（月50万文字まで無料）、**Google Gemini**（無料枠あり）、**OpenAI**（有料）にも切り替えられます（どれも APIキーが必要）
+- 翻訳は **端末内AI（Gemma 4 E2B）**（無料・オフライン・自然な日本語）にもできます
+- オンラインの **Google翻訳**（月50万文字まで無料）、**Google Gemini**（無料枠あり）、**OpenAI**（有料）にも切り替えられます（どれも APIキーが必要）
 - **82言語＋自動判別**に対応（タイ語・ベトナム語・インドネシア語・中国語・韓国語・英語など）。タイ語とベトナム語は専用の高精度モデルを使います
 - 日本語の動画を日本語字幕にする（文字起こしのみ）こともできます
 - 対応: Android 10 以降
@@ -173,9 +174,23 @@ jobs:
 | 翻訳 | 料金 | 特徴 |
 |---|---|---|
 | **端末内**（Google ML Kit） | 無料・オフライン | Google翻訳アプリのオフライン翻訳と同じ仕組み。速い。59言語。話している途中の暫定訳も出る |
+| **端末内AI（Gemma 4 E2B）** | 無料・オフライン | スマホの中で動く Google の AI。文脈を踏まえた自然な日本語。約2.6GB。メモリ8GB以上のスマホ向け |
 | **Google翻訳（オンライン）** | 月50万文字まで無料（超えると100万文字あたり20ドル） | ウェブ版の Google翻訳と同じく、端末内より高精度。全言語に対応。速い |
 | **Gemini** | 無料枠あり（超えると従量課金） | 文脈を踏まえた自然な日本語。全言語に対応 |
 | **OpenAI** | 従量課金 | 文脈を踏まえた自然な日本語。全言語に対応 |
+
+#### 端末内AI（Gemma 4 E2B）を使うには
+
+1. 翻訳で「端末内AI（Gemma 4 E2B）」を選ぶ
+2. 「ダウンロード」を押す（約2.6GB。Wi-Fi で。途中で止まっても続きから再開します）
+3. いつもどおり「字幕を開始」。最初の読み込みに10〜30秒ほどかかります
+
+- **Google AI Edge Gallery などほかのアプリに入れた Gemma は、そのままでは使えません**。Android ではアプリが別のアプリの中のファイルを読めないためです。このアプリにも一度だけ用意する必要があります
+- パソコンなどで [Hugging Face](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) から入手した `gemma-4-E2B-it.litertlm` がスマホのフォルダにあれば、「ファイルから」で読み込めます（ダウンロード不要）
+- GPU で動かし、使えない端末では CPU で動かします。1文の翻訳はおよそ1〜3秒です（スマホの性能によります）
+- 1文の翻訳に失敗したときは、端末内翻訳（ML Kit）で代わりに訳します
+- メモリが足りないスマホでは読み込めないことがあります。その場合は「端末内」か、オンラインの翻訳を使ってください
+- 不要になったら「削除」で約2.6GBを空けられます
 
 #### Google翻訳（オンライン）を使うには
 
@@ -253,6 +268,7 @@ Android 15 以降は、Google Play 以外から入れたアプリの一部の許
   - 端末内・軽量: [Vosk](https://alphacephei.com/vosk/)
   - 端末内・多言語: [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8（Silero VAD で発話区間を切り出し、Whisper int8 またはタイ語 Zipformer（GigaSpeech2）・ベトナム語 Zipformer で認識）。AAR はビルド時に GitHub のリリースから取得します
   - OpenAI: `audio/transcriptions`（簡易 VAD で区間ごとに送信）
+- 端末内AI翻訳: [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) で [Gemma 4 E2B](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) を実行（GPU 優先・CPU にフォールバック、翻訳の指示を読み込み済みの会話を複製して高速化）
 - 翻訳: [Google ML Kit Translation](https://developers.google.com/ml-kit/language/translation) ＋ [Language ID](https://developers.google.com/ml-kit/language/identification)（端末内）、Google Cloud Translation API Basic v2・Gemini API `generateContent`（どちらも利用上限・通信エラー時は端末内翻訳に自動切り替え）、OpenAI `chat/completions`（クラウドはどちらも直前2文を文脈として渡す）
 - モデルの入手元: Whisper・ベトナム語は Hugging Face（csukuangfj）、タイ語は Hugging Face（yfyeung/icefall-asr-gigaspeech2-th-zipformer）、Silero VAD は sherpa-onnx の GitHub リリース
 - 表示: `TYPE_APPLICATION_OVERLAY` のオーバーレイウィンドウ
@@ -267,6 +283,7 @@ Android 15 以降は、Google Play 以外から入れたアプリの一部の許
 | `speech/SherpaEngine.kt` | 端末内・多言語の音声認識（VAD・Whisper・専用モデル・言語判別） |
 | `speech/OpenAiSpeechEngine.kt` | OpenAI の音声認識（発話区間の切り出し付き） |
 | `translate/CaptionTranslator.kt` | ML Kit / Google翻訳 / Gemini / OpenAI の翻訳（自動判別時は文ごとに言語を判別） |
+| `translate/GemmaCaptionTranslator.kt` / `models/GemmaModel.kt` | 端末内AI（Gemma 4 E2B・LiteRT-LM）での翻訳とモデルの管理 |
 | `cloud/` | Google翻訳・Gemini・OpenAI の API 呼び出し |
 | `CaptionPipeline.kt` | 認識→翻訳→表示の受け渡し |
 | `CaptionOverlay.kt` | 画面に重ねる字幕 |

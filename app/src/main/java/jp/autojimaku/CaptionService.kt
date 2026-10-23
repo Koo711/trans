@@ -25,6 +25,7 @@ import android.widget.Toast
 import jp.autojimaku.cloud.GeminiClient
 import jp.autojimaku.cloud.GoogleTranslateClient
 import jp.autojimaku.cloud.OpenAiClient
+import jp.autojimaku.models.GemmaModel
 import jp.autojimaku.models.ModelKind
 import jp.autojimaku.models.SherpaModels
 import jp.autojimaku.models.VoskModels
@@ -34,6 +35,7 @@ import jp.autojimaku.speech.SpeechEngine
 import jp.autojimaku.speech.VoskEngine
 import jp.autojimaku.translate.CaptionTranslator
 import jp.autojimaku.translate.GeminiCaptionTranslator
+import jp.autojimaku.translate.GemmaCaptionTranslator
 import jp.autojimaku.translate.GoogleCloudCaptionTranslator
 import jp.autojimaku.translate.MlKitCaptionTranslator
 import jp.autojimaku.translate.OpenAiCaptionTranslator
@@ -203,6 +205,19 @@ class CaptionService : Service() {
                 }
                 TranslateEngineType.OPENAI ->
                     OpenAiCaptionTranslator(requireClient(), settings.openAiChatModel, lang.label.takeUnless { lang.isAuto })
+                TranslateEngineType.GEMMA -> {
+                    if (!GemmaModel.isReady(this)) {
+                        throw IllegalStateException("端末内AI（Gemma）のモデルがありません。アプリを開いてもう一度「字幕を開始」を押してください")
+                    }
+                    GemmaCaptionTranslator(
+                        modelPath = GemmaModel.file(this).absolutePath,
+                        cacheDir = java.io.File(cacheDir, "gemma").apply { mkdirs() }.absolutePath,
+                        sourceLanguageLabel = lang.label.takeUnless { lang.isAuto },
+                        // 1文の翻訳に失敗したときは端末内翻訳で続ける
+                        fallback = if (lang.mlKitOk) mlKit() else null,
+                        onStatus = showStatus,
+                    )
+                }
                 TranslateEngineType.GOOGLE -> {
                     val googleKey = settings.googleKey
                     if (googleKey.isBlank()) throw IllegalStateException("Google翻訳の APIキーが設定されていません")
