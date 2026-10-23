@@ -3,7 +3,6 @@ package jp.autojimaku.translate
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
-import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
@@ -25,10 +24,6 @@ class GemmaCaptionTranslator(
 
     private val systemPrompt = SubtitlePrompt.system(sourceLanguageLabel)
     private var engine: Engine? = null
-
-    /** 翻訳の指示だけを読み込み済みの会話。翻訳のたびに複製して使う */
-    private var base: Conversation? = null
-    private var cloneWorks = true
     private var useThinkingConfig = true
     private var lastNoticeAt = 0L
 
@@ -68,12 +63,13 @@ class GemmaCaptionTranslator(
         val e = engine ?: throw IllegalStateException(
             "端末内AI（Gemma）を読み込めませんでした。メモリが足りないか、この端末では動かない可能性があります（${errors.joinToString(" / ")}）",
         )
-        base = try {
-            e.createConversation(conversationConfig(prefill = true))
+        // 設定が受け付けられるか一度試す (受け付けられなければ思考の設定を外す)
+        try {
+            e.createConversation(conversationConfig()).close()
         } catch (t: Throwable) {
             Log.w(TAG, "会話の準備に失敗。設定を減らして再試行", t)
             useThinkingConfig = false
-            e.createConversation(conversationConfig(prefill = true))
+            e.createConversation(conversationConfig()).close()
         }
     }
 
@@ -81,7 +77,8 @@ class GemmaCaptionTranslator(
         if (language != null && normalizeLanguage(language) == "ja") return text
         val e = engine ?: return fallback?.translate(text, language, context)
         return try {
-            val conversation = newConversation(e)
+            // 1文ごとに新しい会話で訳す (前の文の影響や履歴の積み重なりを避ける)
+            val conversation = e.createConversation(conversationConfig())
             try {
                 clean(conversation.sendMessage(SubtitlePrompt.user(text, context)).toString()).ifBlank { text }
             } finally {
@@ -101,37 +98,17 @@ class GemmaCaptionTranslator(
 
     override fun close() {
         try {
-            base?.close()
-        } catch (_: Throwable) {
-        }
-        try {
             engine?.close()
         } catch (_: Throwable) {
         }
-        base = null
         engine = null
         fallback?.close()
     }
 
-    /** 指示を読み込み済みの会話を複製する (できなければ新しく作る) */
-    private fun newConversation(e: Engine): Conversation {
-        val b = base
-        if (cloneWorks && b != null) {
-            try {
-                return b.clone()
-            } catch (t: Throwable) {
-                Log.w(TAG, "会話の複製に失敗。毎回新しく作る", t)
-                cloneWorks = false
-            }
-        }
-        return e.createConversation(conversationConfig(prefill = false))
-    }
-
-    private fun conversationConfig(prefill: Boolean) = ConversationConfig(
+    private fun conversationConfig() = ConversationConfig(
         systemInstruction = Contents.of(systemPrompt),
         // 毎回同じ訳になるよう、いちばん確からしい語だけを選ぶ
         samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.1),
-        prefillPrefaceOnInit = prefill,
         maxOutputToken = MAX_OUTPUT_TOKENS,
         // 字幕は速さが大事なので、考える過程は省く
         thinkingConfig = if (useThinkingConfig) ThinkingConfig(enableThinking = false) else null,

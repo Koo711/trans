@@ -268,7 +268,7 @@ Android 15 以降は、Google Play 以外から入れたアプリの一部の許
   - 端末内・軽量: [Vosk](https://alphacephei.com/vosk/)
   - 端末内・多言語: [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8（Silero VAD で発話区間を切り出し、Whisper int8 またはタイ語 Zipformer（GigaSpeech2）・ベトナム語 Zipformer で認識）。AAR はビルド時に GitHub のリリースから取得します
   - OpenAI: `audio/transcriptions`（簡易 VAD で区間ごとに送信）
-- 端末内AI翻訳: [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) で [Gemma 4 E2B](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) を実行（GPU 優先・CPU にフォールバック、翻訳の指示を読み込み済みの会話を複製して高速化）
+- 端末内AI翻訳: [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) で [Gemma 4 E2B](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) を実行（GPU 優先・CPU にフォールバック、1文ごとに新しい会話で翻訳）
 - 翻訳: [Google ML Kit Translation](https://developers.google.com/ml-kit/language/translation) ＋ [Language ID](https://developers.google.com/ml-kit/language/identification)（端末内）、Google Cloud Translation API Basic v2・Gemini API `generateContent`（どちらも利用上限・通信エラー時は端末内翻訳に自動切り替え）、OpenAI `chat/completions`（クラウドはどちらも直前2文を文脈として渡す）
 - モデルの入手元: Whisper・ベトナム語は Hugging Face（csukuangfj）、タイ語は Hugging Face（yfyeung/icefall-asr-gigaspeech2-th-zipformer）、Silero VAD は sherpa-onnx の GitHub リリース
 - 表示: `TYPE_APPLICATION_OVERLAY` のオーバーレイウィンドウ
